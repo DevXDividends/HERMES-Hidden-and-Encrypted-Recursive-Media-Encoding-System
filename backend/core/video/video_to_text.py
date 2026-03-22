@@ -1,9 +1,35 @@
+import base64
 import zlib
 
-MAGIC = b"HERMESVT"
+ZW_ZERO = "\u200B"  # bit 0
+ZW_ONE  = "\u200C"  # bit 1
+ZW_MARK = "\u200D"  # separator (invisible)
 
 
-def encode_video_into_text(cover_text: str, hidden_video) -> bytes:
+def _bytes_to_zw(data: bytes) -> str:
+    bits = "".join(f"{b:08b}" for b in data)
+    return "".join(ZW_ONE if bit == "1" else ZW_ZERO for bit in bits)
+
+
+def _zw_to_bytes(text: str) -> bytes:
+    bits = []
+    for ch in text:
+        if ch == ZW_ONE:
+            bits.append("1")
+        elif ch == ZW_ZERO:
+            bits.append("0")
+
+    bit_string = "".join(bits)
+    if len(bit_string) % 8 != 0:
+        raise ValueError("Corrupted hidden data")
+
+    return bytes(
+        int(bit_string[i:i + 8], 2)
+        for i in range(0, len(bit_string), 8)
+    )
+
+
+def encode_video_into_text(cover_text: str, hidden_video) -> str:
     if not cover_text.strip():
         raise ValueError("Cover text cannot be empty")
 
@@ -13,26 +39,28 @@ def encode_video_into_text(cover_text: str, hidden_video) -> bytes:
         raise ValueError("Hidden video is empty")
 
     checksum = zlib.crc32(video_bytes)
-    header   = len(video_bytes).to_bytes(4, "big") + checksum.to_bytes(4, "big")
+    payload  = checksum.to_bytes(4, "big") + video_bytes
+    encoded  = base64.b64encode(payload)
 
-    return cover_text.encode("utf-8") + MAGIC + header + video_bytes
+    zw_payload = _bytes_to_zw(encoded)
+
+    return cover_text.rstrip() + ZW_MARK + zw_payload
 
 
 def decode_video_from_text(data) -> bytes:
-    if isinstance(data, str):
-        data = data.encode("utf-8")
+    if isinstance(data, bytes):
+        data = data.decode("utf-8")
 
-    idx = data.rfind(MAGIC)
-    if idx == -1:
-        raise ValueError("No hidden video found in this file")
+    if ZW_MARK not in data:
+        raise ValueError("No hidden video found")
 
-    ms          = idx + len(MAGIC)
-    length      = int.from_bytes(data[ms:ms + 4], "big")
-    checksum    = int.from_bytes(data[ms + 4:ms + 8], "big")
-    video_bytes = data[ms + 8:ms + 8 + length]
+    zw_payload  = data.split(ZW_MARK, 1)[1]
+    encoded     = _zw_to_bytes(zw_payload)
 
-    if len(video_bytes) != length:
-        raise ValueError("Incomplete hidden video data")
+    raw         = base64.b64decode(encoded)
+    checksum    = int.from_bytes(raw[:4], "big")
+    video_bytes = raw[4:]
+
     if zlib.crc32(video_bytes) != checksum:
         raise ValueError("Hidden video corrupted (checksum mismatch)")
 

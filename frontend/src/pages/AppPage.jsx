@@ -329,7 +329,7 @@ function EncryptionPanel({ mode, setMode, password, setPassword, operation, pubK
               </div>
               <motion.button type="button" onClick={onGenerateKeypair} disabled={keypairLoading} whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}
                 style={{ padding: '0.625rem', borderRadius: 10, border: '1px solid rgba(255,255,255,0.1)', background: 'rgba(255,255,255,0.03)', color: 'var(--text-secondary)', cursor: 'pointer', fontSize: 12, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6 }}>
-                {keypairLoading ? <Loader2 size={13} style={{ animation: 'spin 1s linear infinite' }} /> : <Key size={13} />}
+                {keypairLoading ? <Loader2 size={13} className="animate-spin" /> : <Key size={13} />}
                 Generate new keypair
               </motion.button>
             </motion.div>
@@ -516,7 +516,7 @@ export default function AppPage() {
               {operation === 'encode' ? (
                 <><span style={{ background: 'linear-gradient(135deg,#8b5cf6,#14b8a6)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>Hide</span> your secret</>
               ) : (
-                <><span style={{ background: 'linear-gradient(135deg,#14b8a6,#8b5cf6)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>Reveal</span> the hidden</>
+                <><span style={{ background: 'linear-gradient(135deg,#8b5cf6,#14b8a6)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>Reveal</span> the hidden</>
               )}
             </h1>
             <p style={{ color: 'var(--text-secondary)', fontSize: 15, marginTop: '0.625rem' }}>
@@ -592,9 +592,9 @@ export default function AppPage() {
                 <motion.button type="submit" disabled={loading} whileHover={{ scale: loading ? 1 : 1.02, y: loading ? 0 : -2 }} whileTap={{ scale: loading ? 1 : 0.98 }}
                   style={{ width: '100%', padding: '1.125rem', borderRadius: 16, fontSize: 16, fontWeight: 700, background: loading ? 'rgba(139,92,246,0.4)' : 'linear-gradient(135deg, #8b5cf6, #14b8a6)', color: 'white', border: 'none', cursor: loading ? 'not-allowed' : 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 10, fontFamily: 'Space Grotesk, sans-serif', letterSpacing: '0.01em', boxShadow: loading ? 'none' : '0 0 40px rgba(139,92,246,0.25)', transition: 'box-shadow 0.3s' }}>
                   {loading
-                    ? <><Loader2 size={18} style={{ animation: 'spin 1s linear infinite' }} /> Processing...</>
+                    ? <><Loader2 size={18} className="animate-spin" /> Processing...</>
                     : operation === 'encode'
-                      ? <><Zap size={17} /> Encode & Download</>
+                      ? <><Zap size={17} /> Encode </>
                       : <><Eye size={17} /> Decode & Reveal</>}
                 </motion.button>
               </div>

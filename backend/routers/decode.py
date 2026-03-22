@@ -22,6 +22,7 @@ from core.image.image_to_text  import decode_image_from_text
 from core.audio.audio_to_audio import decode_audio_from_audio
 from core.audio.audio_to_image import decode_audio_from_image
 from core.audio.audio_to_video import decode_audio_from_video
+from core.audio.audio_to_text  import decode_audio_from_text
 
 from core.video.video_to_text  import decode_video_from_text
 from core.video.video_to_image import decode_video_from_image
@@ -162,7 +163,7 @@ async def decode(
         # ── AUDIO hidden ──────────────────────────────────────────────────────
         elif hidden_type == "audio":
             if carrier_type == "text":
-                raw = eof_extract_from_data(data, b"HERMESATX")
+                raw = decode_audio_from_text(data.decode("utf-8"))
             elif carrier_type == "image":
                 if enc_mode != "none":
                     raw = lsb_extract_raw_from_png(data)

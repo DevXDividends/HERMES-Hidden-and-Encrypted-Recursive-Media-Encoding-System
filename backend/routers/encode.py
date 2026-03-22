@@ -22,6 +22,7 @@ from core.image.image_to_text  import encode_image_into_text
 from core.audio.audio_to_audio import encode_audio_into_audio
 from core.audio.audio_to_image import encode_audio_into_image
 from core.audio.audio_to_video import encode_audio_into_video
+from core.audio.audio_to_text  import encode_audio_into_text
 
 from core.video.video_to_text  import encode_video_into_text
 from core.video.video_to_image import encode_video_into_image
@@ -176,8 +177,8 @@ async def encode(
             if carrier_type == "text":
                 if not cover_text.strip():
                     raise HTTPException(400, "Cover text is required when carrier is Text")
-                out = eof_embed_into_text(cover_text, enc, b"HERMESATX")
-                return stream_file(out, "hermes_audio_text.txt")
+                out = encode_audio_into_text(cover_text, BytesIO(enc))
+                return stream_file(out.encode("utf-8"), "hermes_audio_text.txt", "text/plain")
 
             elif carrier_type == "image":
                 if enc_mode != "none":
@@ -205,7 +206,7 @@ async def encode(
 
             if carrier_type == "text":
                 out = encode_video_into_text(cover_text, BytesIO(enc))
-                return stream_file(out, "hermes_video_text.txt")
+                return stream_file(out.encode("utf-8") if isinstance(out, str) else out, "hermes_video_text.txt", "text/plain")
 
             elif carrier_type == "image":
                 out = encode_video_into_image(BytesIO(carrier_bytes), BytesIO(enc))
