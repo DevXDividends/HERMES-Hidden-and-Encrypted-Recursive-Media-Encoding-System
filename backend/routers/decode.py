@@ -17,6 +17,7 @@ from core.text.text_to_video  import decode_text_from_video
 from core.image.image_to_image import decode_image_from_image
 from core.image.image_to_video import decode_image_from_video
 from core.image.image_to_audio import decode_image_from_audio
+from core.image.image_to_text  import decode_image_from_text
 
 from core.audio.audio_to_audio import decode_audio_from_audio
 from core.audio.audio_to_image import decode_audio_from_image
@@ -41,6 +42,24 @@ def maybe_decrypt(data: bytes, enc_mode: str, password: str = "", priv_key: str 
             raise HTTPException(400, "Private key required for decryption")
         return decrypt_with_private_key(data, priv_key.encode("utf-8"))
     return data
+
+
+def lsb_extract_raw_from_png(data: bytes) -> bytes:
+    import numpy as np
+    from PIL import Image
+    img = Image.open(BytesIO(data)).convert("RGB")
+    arr = np.array(img)
+    flat = arr.reshape(-1)
+    bits = "".join(str(px & 1) for px in flat)
+    raw  = bytes(int(bits[i:i+8], 2) for i in range(0, len(bits), 8))
+    length   = int.from_bytes(raw[:4], "big")
+    checksum = int.from_bytes(raw[4:8], "big")
+    result   = raw[8:8+length]
+    if len(result) != length:
+        raise HTTPException(400, "Incomplete hidden data")
+    if zlib.crc32(result) != checksum:
+        raise HTTPException(400, "Hidden data corrupted — checksum mismatch")
+    return result
 
 
 def lsb_extract_raw_from_wav(data: bytes) -> bytes:
@@ -121,9 +140,12 @@ async def decode(
         # ── IMAGE hidden ──────────────────────────────────────────────────────
         elif hidden_type == "image":
             if carrier_type == "text":
-                raw = eof_extract_from_data(data, b"HERMESITX")
+                raw = decode_image_from_text(data.decode("utf-8"))
             elif carrier_type == "image":
-                raw = decode_image_from_image(BytesIO(data))
+                if enc_mode != "none":
+                    raw = lsb_extract_raw_from_png(data)
+                else:
+                    raw = decode_image_from_image(BytesIO(data))
             elif carrier_type == "audio":
                 if enc_mode != "none":
                     raw = lsb_extract_raw_from_wav(data)
@@ -142,7 +164,10 @@ async def decode(
             if carrier_type == "text":
                 raw = eof_extract_from_data(data, b"HERMESATX")
             elif carrier_type == "image":
-                raw = decode_audio_from_image(BytesIO(data))
+                if enc_mode != "none":
+                    raw = lsb_extract_raw_from_png(data)
+                else:
+                    raw = decode_audio_from_image(BytesIO(data))
             elif carrier_type == "audio":
                 if enc_mode != "none":
                     raw = lsb_extract_raw_from_wav(data)

@@ -17,6 +17,7 @@ from core.text.text_to_video  import encode_text_into_video
 from core.image.image_to_image import encode_image_into_image
 from core.image.image_to_video import encode_image_into_video
 from core.image.image_to_audio import encode_image_into_audio
+from core.image.image_to_text  import encode_image_into_text
 
 from core.audio.audio_to_audio import encode_audio_into_audio
 from core.audio.audio_to_image import encode_audio_into_image
@@ -145,11 +146,8 @@ async def encode(
             if carrier_type == "text":
                 if not cover_text.strip():
                     raise HTTPException(400, "Cover text is required when carrier is Text")
-                import base64
-
-                payload = base64.b64encode(enc).decode()
-                out = eof_embed_into_text(cover_text, payload.encode("utf-8"), b"HERMESITX")
-                return stream_file(out, "hermes_image_text.txt")
+                out = encode_image_into_text(cover_text, BytesIO(enc))
+                return stream_file(out.encode("utf-8"), "hermes_image_text.txt", "text/plain")
 
             elif carrier_type == "image":
                 if enc_mode != "none":
