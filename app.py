@@ -23,7 +23,7 @@ from core.video.video_to_image import encode_video_into_image, decode_video_from
 from core.video.video_to_audio import encode_video_into_audio, decode_video_from_audio
 from core.video.video_to_video import encode_video_into_video, decode_video_from_video
 
-from crypto import (
+from backend.crypto import (
     encrypt_with_password, decrypt_with_password,
     encrypt_with_public_key, decrypt_with_private_key,
     generate_keypair,

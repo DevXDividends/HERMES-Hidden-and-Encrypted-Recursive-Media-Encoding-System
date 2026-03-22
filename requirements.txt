@@ -1,4 +1,0 @@
-streamlit
-cryptography
-Pillow
-numpy
