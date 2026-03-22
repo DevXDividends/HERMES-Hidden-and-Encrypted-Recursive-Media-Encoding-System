@@ -514,9 +514,9 @@ export default function AppPage() {
           <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} style={{ marginBottom: '2.5rem' }}>
             <h1 style={{ fontFamily: 'Syne, sans-serif', fontSize: 'clamp(1.8rem, 3vw, 2.4rem)', fontWeight: 800, marginBottom: '0.5rem', margin: 0 }}>
               {operation === 'encode' ? (
-                <><span style={{ background: 'linear-gradient(135deg,#8b5cf6,#14b8a6)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>Hide</span> your secret</>
+                <><span style={{ background: 'linear-gradient(135deg,#8b5cf6,#14b8a6)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' ,display: 'inline-block'}}>Hide</span> your secret</>
               ) : (
-                <><span style={{ background: 'linear-gradient(135deg,#8b5cf6,#14b8a6)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>Reveal</span> the hidden</>
+                <><span style={{ background: 'linear-gradient(135deg,#8b5cf6,#14b8a6)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent',display: 'inline-block' }}>Reveal</span> the hidden</>
               )}
             </h1>
             <p style={{ color: 'var(--text-secondary)', fontSize: 15, marginTop: '0.625rem' }}>
