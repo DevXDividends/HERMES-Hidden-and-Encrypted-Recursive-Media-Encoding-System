@@ -1,9 +1,10 @@
 import { useEffect, useRef } from 'react'
+import LSBDemo from '../components/LSBDemo'
 import { useNavigate } from 'react-router-dom'
 import { motion } from 'framer-motion'
 import { Shield, Eye, Zap, Lock, Radio, Film, Music, FileText, Image } from 'lucide-react'
 
-// ── Star particle canvas ───────────────────────────────────────────────────
+// ── Deep Space Background ─────────────────────────────────────────────────
 function StarField() {
   const canvasRef = useRef(null)
 
@@ -12,29 +13,173 @@ function StarField() {
     const ctx    = canvas.getContext('2d')
     let w = canvas.width  = window.innerWidth
     let h = canvas.height = window.innerHeight
-    let raf
+    let raf, t = 0
 
-    const stars = Array.from({ length: 180 }, () => ({
+    // Stars — three layers for depth parallax
+    const layers = [
+      Array.from({ length: 120 }, () => ({ x: Math.random()*w, y: Math.random()*h, r: Math.random()*0.8+0.1, a: Math.random()*Math.PI*2, speed: 0.0008, drift: 0.02 })),
+      Array.from({ length: 80  }, () => ({ x: Math.random()*w, y: Math.random()*h, r: Math.random()*1.2+0.3, a: Math.random()*Math.PI*2, speed: 0.0015, drift: 0.05 })),
+      Array.from({ length: 40  }, () => ({ x: Math.random()*w, y: Math.random()*h, r: Math.random()*2.0+0.5, a: Math.random()*Math.PI*2, speed: 0.003,  drift: 0.09 })),
+    ]
+    const drifts = [0.015, 0.035, 0.07]
+
+    // Shooting stars
+    const shoots = Array.from({ length: 5 }, () => newShoot(w, h))
+    function newShoot(w, h) {
+      return {
+        x: Math.random() * w * 0.7,
+        y: Math.random() * h * 0.4,
+        len: Math.random() * 120 + 60,
+        speed: Math.random() * 8 + 6,
+        angle: Math.PI / 5 + (Math.random() - 0.5) * 0.3,
+        alpha: 0,
+        state: 'wait',
+        wait: Math.random() * 400 + 100,
+        progress: 0,
+      }
+    }
+
+    // Nebula blobs — pre-computed positions
+    const nebulas = [
+      { x: w*0.15, y: h*0.25, rx: w*0.22, ry: h*0.18, r: 60, g: 20, b: 160 },
+      { x: w*0.78, y: h*0.60, rx: w*0.20, ry: h*0.22, r: 10, g: 140, b: 130 },
+      { x: w*0.50, y: h*0.80, rx: w*0.18, ry: h*0.15, r: 100, g: 30, b: 180 },
+    ]
+
+    // Data stream particles (binary feel)
+    const particles = Array.from({ length: 25 }, () => ({
       x: Math.random() * w,
       y: Math.random() * h,
-      r: Math.random() * 1.4 + 0.2,
+      vy: Math.random() * 0.3 + 0.1,
       a: Math.random(),
-      speed: Math.random() * 0.003 + 0.001,
-      drift: (Math.random() - 0.5) * 0.08,
+      char: Math.random() > 0.5 ? '1' : '0',
+      size: Math.floor(Math.random() * 3) + 8,
+      color: Math.random() > 0.5 ? '139,92,246' : '20,184,166',
     }))
+
+    function drawNebulas() {
+      nebulas.forEach(n => {
+        const grad = ctx.createRadialGradient(n.x, n.y, 0, n.x, n.y, Math.max(n.rx, n.ry))
+        grad.addColorStop(0,   `rgba(${n.r},${n.g},${n.b},0.04)`)
+        grad.addColorStop(0.5, `rgba(${n.r},${n.g},${n.b},0.02)`)
+        grad.addColorStop(1,   `rgba(${n.r},${n.g},${n.b},0)`)
+        ctx.save()
+        ctx.scale(n.rx / Math.max(n.rx, n.ry), n.ry / Math.max(n.rx, n.ry))
+        ctx.beginPath()
+        ctx.arc(
+          n.x * Math.max(n.rx,n.ry)/n.rx,
+          n.y * Math.max(n.rx,n.ry)/n.ry,
+          Math.max(n.rx, n.ry), 0, Math.PI*2
+        )
+        ctx.fillStyle = grad
+        ctx.fill()
+        ctx.restore()
+      })
+    }
+
+    function drawStars() {
+      layers.forEach((layer, li) => {
+        layer.forEach(s => {
+          s.a += s.speed
+          s.x += drifts[li]
+          if (s.x > w + 2) s.x = -2
+          const brightness = (Math.sin(s.a) * 0.5 + 0.5)
+          const alpha = li === 0 ? brightness * 0.5
+                      : li === 1 ? brightness * 0.75
+                      : brightness * 0.95
+          ctx.beginPath()
+          ctx.arc(s.x, s.y, s.r, 0, Math.PI*2)
+          // Slight color tint for far stars
+          const tint = li === 0 ? `rgba(180,200,255,${alpha})`
+                     : li === 1 ? `rgba(220,220,255,${alpha})`
+                     : `rgba(255,255,255,${alpha})`
+          ctx.fillStyle = tint
+          ctx.fill()
+          // Glow on bright close stars
+          if (li === 2 && brightness > 0.7) {
+            ctx.beginPath()
+            ctx.arc(s.x, s.y, s.r * 3, 0, Math.PI*2)
+            ctx.fillStyle = `rgba(180,160,255,${(brightness-0.7)*0.06})`
+            ctx.fill()
+          }
+        })
+      })
+    }
+
+    function drawShoots() {
+      shoots.forEach((s, i) => {
+        if (s.state === 'wait') {
+          s.wait--
+          if (s.wait <= 0) s.state = 'in'
+        } else if (s.state === 'in') {
+          s.progress += s.speed
+          s.alpha = Math.min(1, s.progress / 20)
+          const cx = s.x + Math.cos(s.angle) * s.progress
+          const cy = s.y + Math.sin(s.angle) * s.progress
+          const tx = cx - Math.cos(s.angle) * s.len
+          const ty = cy - Math.sin(s.angle) * s.len
+          const grad = ctx.createLinearGradient(tx, ty, cx, cy)
+          grad.addColorStop(0, `rgba(255,255,255,0)`)
+          grad.addColorStop(1, `rgba(255,255,255,${s.alpha * 0.8})`)
+          ctx.beginPath()
+          ctx.moveTo(tx, ty)
+          ctx.lineTo(cx, cy)
+          ctx.strokeStyle = grad
+          ctx.lineWidth = 1.5
+          ctx.stroke()
+          if (s.progress > s.len + 200) {
+            shoots[i] = newShoot(w, h)
+            shoots[i].wait = Math.random() * 600 + 200
+          }
+        }
+      })
+    }
+
+    function drawParticles() {
+      particles.forEach(p => {
+        p.y += p.vy
+        p.a += 0.005
+        if (p.y > h + 20) { p.y = -20; p.x = Math.random() * w }
+        const alpha = (Math.sin(p.a) * 0.3 + 0.15)
+        ctx.font = `${p.size}px JetBrains Mono, monospace`
+        ctx.fillStyle = `rgba(${p.color},${alpha})`
+        ctx.fillText(p.char, p.x, p.y)
+      })
+    }
+
+    // Hex data streams on the sides
+    const hexStream = Array.from({ length: 12 }, (_, i) => ({
+      x: i % 2 === 0 ? Math.random() * 120 : w - Math.random() * 120,
+      y: Math.random() * h,
+      vy: Math.random() * 0.5 + 0.2,
+      text: Math.floor(Math.random() * 0xff).toString(16).padStart(2,'0'),
+      a: Math.random() * Math.PI * 2,
+      color: Math.random() > 0.5 ? '139,92,246' : '20,184,166',
+    }))
+
+    function drawHexStreams() {
+      hexStream.forEach(s => {
+        s.y += s.vy
+        s.a += 0.008
+        if (s.y > h + 20) {
+          s.y = -20
+          s.text = Math.floor(Math.random() * 0xff).toString(16).padStart(2,'0')
+        }
+        const alpha = Math.sin(s.a) * 0.06 + 0.03
+        ctx.font = '10px JetBrains Mono, monospace'
+        ctx.fillStyle = `rgba(${s.color},${alpha})`
+        ctx.fillText(s.text, s.x, s.y)
+      })
+    }
 
     function draw() {
       ctx.clearRect(0, 0, w, h)
-      stars.forEach(s => {
-        s.a += s.speed
-        s.x += s.drift
-        if (s.x > w) s.x = 0
-        if (s.x < 0) s.x = w
-        ctx.beginPath()
-        ctx.arc(s.x, s.y, s.r, 0, Math.PI * 2)
-        ctx.fillStyle = `rgba(255,255,255,${Math.abs(Math.sin(s.a)) * 0.7})`
-        ctx.fill()
-      })
+      t++
+      drawNebulas()
+      drawStars()
+      drawShoots()
+      drawParticles()
+      drawHexStreams()
       raf = requestAnimationFrame(draw)
     }
     draw()
@@ -42,6 +187,9 @@ function StarField() {
     const resize = () => {
       w = canvas.width  = window.innerWidth
       h = canvas.height = window.innerHeight
+      nebulas[0].x = w*0.15; nebulas[0].y = h*0.25; nebulas[0].rx = w*0.22; nebulas[0].ry = h*0.18
+      nebulas[1].x = w*0.78; nebulas[1].y = h*0.60; nebulas[1].rx = w*0.20; nebulas[1].ry = h*0.22
+      nebulas[2].x = w*0.50; nebulas[2].y = h*0.80; nebulas[2].rx = w*0.18; nebulas[2].ry = h*0.15
     }
     window.addEventListener('resize', resize)
     return () => { cancelAnimationFrame(raf); window.removeEventListener('resize', resize) }
@@ -100,17 +248,36 @@ function FeatureCard({ icon: Icon, title, desc, color, delay }) {
       viewport={{ once: true }}
       transition={{ duration: 0.5, delay }}
       whileHover={{ y: -4, scale: 1.02 }}
-      className="glass rounded-2xl p-6 cursor-default"
-      style={{ borderColor: `${color}22` }}
+      style={{
+        background: 'rgba(255,255,255,0.03)',
+        backdropFilter: 'blur(20px)',
+        border: `1px solid ${color}22`,
+        borderRadius: 16,
+        padding: '1.75rem',
+        cursor: 'default',
+      }}
     >
-      <div
-        className="w-10 h-10 rounded-xl flex items-center justify-center mb-4"
-        style={{ background: `${color}15`, border: `1px solid ${color}30` }}
-      >
+      <div style={{
+        width: 40, height: 40, borderRadius: 10,
+        background: `${color}15`, border: `1px solid ${color}30`,
+        display: 'flex', alignItems: 'center', justifyContent: 'center',
+        marginBottom: '1rem', flexShrink: 0,
+      }}>
         <Icon size={18} style={{ color }} />
       </div>
-      <h3 className="font-semibold text-base mb-2" style={{ fontFamily: 'Syne, sans-serif' }}>{title}</h3>
-      <p className="text-sm leading-relaxed" style={{ color: 'var(--text-secondary)' }}>{desc}</p>
+      <h3 style={{
+        fontFamily: 'Syne, sans-serif', fontWeight: 600,
+        fontSize: 15, marginBottom: '0.5rem',
+        color: 'var(--text-primary)',
+      }}>
+        {title}
+      </h3>
+      <p style={{
+        fontSize: 13, lineHeight: 1.7,
+        color: 'var(--text-secondary)', margin: 0,
+      }}>
+        {desc}
+      </p>
     </motion.div>
   )
 }
@@ -120,11 +287,14 @@ function MatrixBadge({ label, icon: Icon, color }) {
   return (
     <motion.div
       whileHover={{ scale: 1.05 }}
-      className="flex items-center gap-2 px-3 py-1.5 rounded-full"
-      style={{ background: `${color}10`, border: `1px solid ${color}25`, color }}
+      style={{
+        display: 'inline-flex', alignItems: 'center', gap: 6,
+        padding: '0.375rem 0.875rem', borderRadius: 100,
+        background: `${color}10`, border: `1px solid ${color}25`, color,
+      }}
     >
       <Icon size={12} />
-      <span className="text-xs font-medium">{label}</span>
+      <span style={{ fontSize: 12, fontWeight: 500 }}>{label}</span>
     </motion.div>
   )
 }
@@ -153,17 +323,34 @@ export default function Landing() {
     <div style={{ minHeight: '100vh', position: 'relative', overflow: 'hidden' }}>
       <StarField />
 
-      {/* Ambient glow orbs */}
-      <div style={{
-        position: 'fixed', top: '20%', left: '10%', width: 400, height: 400,
-        background: 'radial-gradient(circle, rgba(139,92,246,0.06) 0%, transparent 70%)',
-        pointerEvents: 'none', zIndex: 0,
-      }} />
-      <div style={{
-        position: 'fixed', bottom: '20%', right: '10%', width: 500, height: 500,
-        background: 'radial-gradient(circle, rgba(20,184,166,0.05) 0%, transparent 70%)',
-        pointerEvents: 'none', zIndex: 0,
-      }} />
+      {/* Animated ambient orbs */}
+      <motion.div
+        animate={{ scale: [1, 1.15, 1], opacity: [0.6, 1, 0.6] }}
+        transition={{ duration: 8, repeat: Infinity, ease: 'easeInOut' }}
+        style={{
+          position: 'fixed', top: '15%', left: '8%', width: 500, height: 500,
+          background: 'radial-gradient(circle, rgba(139,92,246,0.08) 0%, transparent 70%)',
+          pointerEvents: 'none', zIndex: 0, borderRadius: '50%',
+        }}
+      />
+      <motion.div
+        animate={{ scale: [1, 1.2, 1], opacity: [0.5, 0.9, 0.5] }}
+        transition={{ duration: 10, repeat: Infinity, ease: 'easeInOut', delay: 2 }}
+        style={{
+          position: 'fixed', bottom: '15%', right: '8%', width: 600, height: 600,
+          background: 'radial-gradient(circle, rgba(20,184,166,0.06) 0%, transparent 70%)',
+          pointerEvents: 'none', zIndex: 0, borderRadius: '50%',
+        }}
+      />
+      <motion.div
+        animate={{ scale: [1, 1.1, 1], opacity: [0.3, 0.7, 0.3] }}
+        transition={{ duration: 12, repeat: Infinity, ease: 'easeInOut', delay: 4 }}
+        style={{
+          position: 'fixed', top: '50%', left: '45%', width: 400, height: 400,
+          background: 'radial-gradient(circle, rgba(236,72,153,0.04) 0%, transparent 70%)',
+          pointerEvents: 'none', zIndex: 0, borderRadius: '50%',
+        }}
+      />
 
       <div style={{ position: 'relative', zIndex: 1 }}>
 
@@ -189,8 +376,12 @@ export default function Landing() {
             whileHover={{ scale: 1.04 }}
             whileTap={{ scale: 0.97 }}
             onClick={() => navigate('/app')}
-            className="btn-primary"
-            style={{ padding: '0.5rem 1.25rem', borderRadius: 10, fontSize: 13 }}
+            style={{
+              padding: '0.5rem 1.25rem', borderRadius: 10, fontSize: 13,
+              background: 'linear-gradient(135deg, #8b5cf6, #14b8a6)',
+              color: 'white', border: 'none', cursor: 'pointer',
+              fontFamily: 'Space Grotesk, sans-serif', fontWeight: 600,
+            }}
           >
             <span>Launch App →</span>
           </motion.button>
@@ -237,7 +428,11 @@ export default function Landing() {
               marginBottom: '1.5rem',
             }}
           >
-            <span className="gradient-text">Hide anything.</span>
+            <span style={{
+              background: 'linear-gradient(135deg, #8b5cf6, #14b8a6)',
+              WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent',
+              backgroundClip: 'text',
+            }}>Hide anything.</span>
             <br />
             <span style={{ color: 'var(--text-primary)' }}>Encrypt everything.</span>
           </motion.h1>
@@ -276,10 +471,12 @@ export default function Landing() {
               whileHover={{ scale: 1.05, y: -2 }}
               whileTap={{ scale: 0.97 }}
               onClick={() => navigate('/app')}
-              className="btn-primary"
               style={{
                 padding: '0.875rem 2.5rem', borderRadius: 14,
                 fontSize: 15, fontWeight: 600,
+                background: 'linear-gradient(135deg, #8b5cf6, #14b8a6)',
+                color: 'white', border: 'none', cursor: 'pointer',
+                fontFamily: 'Space Grotesk, sans-serif',
                 boxShadow: '0 0 40px rgba(139,92,246,0.3)',
               }}
             >
@@ -289,8 +486,13 @@ export default function Landing() {
               whileHover={{ scale: 1.03 }}
               whileTap={{ scale: 0.97 }}
               onClick={() => document.getElementById('features').scrollIntoView({ behavior: 'smooth' })}
-              className="btn-ghost"
-              style={{ padding: '0.875rem 2rem', borderRadius: 14, fontSize: 15 }}
+              style={{
+                padding: '0.875rem 2rem', borderRadius: 14, fontSize: 15,
+                background: 'transparent',
+                border: '1px solid rgba(255,255,255,0.1)',
+                color: '#94a3b8', cursor: 'pointer',
+                fontFamily: 'Space Grotesk, sans-serif',
+              }}
             >
               Learn more
             </motion.button>
@@ -350,6 +552,11 @@ export default function Landing() {
           </div>
         </section>
 
+        {/* LSB Interactive Demo */}
+        <div style={{ borderTop: '1px solid var(--border-subtle)', background: 'rgba(255,255,255,0.01)' }}>
+          <LSBDemo />
+        </div>
+
         {/* CTA footer */}
         <section style={{
           padding: '5rem 2rem',
@@ -372,9 +579,11 @@ export default function Landing() {
               whileHover={{ scale: 1.05, y: -2 }}
               whileTap={{ scale: 0.97 }}
               onClick={() => navigate('/app')}
-              className="btn-primary"
               style={{
                 padding: '1rem 3rem', borderRadius: 14, fontSize: 16, fontWeight: 600,
+                background: 'linear-gradient(135deg, #8b5cf6, #14b8a6)',
+                color: 'white', border: 'none', cursor: 'pointer',
+                fontFamily: 'Space Grotesk, sans-serif',
                 boxShadow: '0 0 60px rgba(139,92,246,0.25)',
               }}
             >

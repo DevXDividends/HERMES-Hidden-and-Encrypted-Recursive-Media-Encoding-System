@@ -143,7 +143,12 @@ async def encode(
             enc = maybe_encrypt(hidden_bytes, enc_mode, password, pub_key)
 
             if carrier_type == "text":
-                out = eof_embed_into_text(cover_text, enc, b"HERMESITX")
+                if not cover_text.strip():
+                    raise HTTPException(400, "Cover text is required when carrier is Text")
+                import base64
+
+                payload = base64.b64encode(enc).decode()
+                out = eof_embed_into_text(cover_text, payload.encode("utf-8"), b"HERMESITX")
                 return stream_file(out, "hermes_image_text.txt")
 
             elif carrier_type == "image":
@@ -171,6 +176,8 @@ async def encode(
             enc = maybe_encrypt(hidden_bytes, enc_mode, password, pub_key)
 
             if carrier_type == "text":
+                if not cover_text.strip():
+                    raise HTTPException(400, "Cover text is required when carrier is Text")
                 out = eof_embed_into_text(cover_text, enc, b"HERMESATX")
                 return stream_file(out, "hermes_audio_text.txt")
 
