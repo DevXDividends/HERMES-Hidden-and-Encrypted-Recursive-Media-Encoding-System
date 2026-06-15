@@ -1,6 +1,8 @@
 import axios from 'axios'
+console.log("API URL =", import.meta.env.VITE_API_URL);
 
-const BASE = 'http://localhost:8000/api'
+const BASE = `${import.meta.env.VITE_API_URL}/api`;
+
 
 // Extract filename from Content-Disposition header
 function getFilename(headers, fallback = 'hermes_output') {
