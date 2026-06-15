@@ -163,7 +163,191 @@ HERMES/
 ---
 
 ## 🚀 Getting Started
+### 🐳 Docker Setup
 
+
+
+
+### Project Structure
+
+```text
+HERMES/
+├── backend/
+│   ├── Dockerfile
+│   └── .dockerignore
+│
+├── frontend/
+│   ├── Dockerfile
+│   └── .dockerignore
+│
+└── docker-compose.yml
+```
+
+---
+
+### Environment Configuration
+
+Frontend uses an environment variable for the backend API:
+
+```env
+VITE_API_URL=http://localhost:8000
+```
+
+This allows the React application running in the browser to communicate with the FastAPI backend exposed through Docker port mapping.
+
+---
+
+### Build Containers
+
+From the project root:
+
+```bash
+docker compose build
+```
+
+To rebuild from scratch:
+
+```bash
+docker compose build --no-cache
+```
+
+---
+
+### Start Containers
+
+```bash
+docker compose up
+```
+
+Run in detached mode:
+
+```bash
+docker compose up -d
+```
+
+---
+
+### Stop Containers
+
+```bash
+docker compose down
+```
+
+---
+
+### Access the Application
+
+| Service      | URL                        |
+| ------------ | -------------------------- |
+| Frontend     | http://localhost:5173      |
+| Backend API  | http://localhost:8000      |
+| Swagger Docs | http://localhost:8000/docs |
+
+---
+
+### View Logs
+
+Backend:
+
+```bash
+docker compose logs -f backend
+```
+
+Frontend:
+
+```bash
+docker compose logs -f frontend
+```
+
+All services:
+
+```bash
+docker compose logs -f
+```
+
+---
+
+### Development Workflow
+
+Source code is mounted into the containers using Docker volumes.
+
+This means:
+
+* Changes to React files automatically trigger Vite hot reload.
+* Changes to FastAPI files automatically trigger Uvicorn reload.
+* No container rebuild is required for normal development.
+
+Simply edit code and refresh the browser.
+
+---
+
+### Troubleshooting
+
+#### Frontend cannot reach backend
+
+Verify:
+
+```bash
+http://localhost:8000/docs
+```
+
+opens successfully.
+
+Ensure:
+
+```env
+VITE_API_URL=http://localhost:8000
+```
+
+is configured correctly.
+
+#### Containers not starting
+
+Check logs:
+
+```bash
+docker compose logs backend
+docker compose logs frontend
+```
+
+#### Rebuild after dependency changes
+
+If requirements.txt or package.json changes:
+
+```bash
+docker compose down
+docker compose build --no-cache
+docker compose up
+```
+
+---
+
+### Useful Commands
+
+```bash
+# Start containers
+docker compose up
+
+# Stop containers
+docker compose down
+
+# Rebuild images
+docker compose build
+
+# Rebuild from scratch
+docker compose build --no-cache
+
+# View running containers
+docker compose ps
+
+# Backend logs
+docker compose logs -f backend
+
+# Frontend logs
+docker compose logs -f frontend
+```
+
+### Running Without Docker
 ### Prerequisites
 
 Ensure you have **Python 3.8+** and **Node.js 18+** installed.
